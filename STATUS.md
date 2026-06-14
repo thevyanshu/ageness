@@ -100,6 +100,22 @@
 
 ---
 
+## Benchmark Framework
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `benchmark/models.py` | ✅ | Scenario, MetricsSnapshot, BenchmarkConfig, EvaluationScore |
+| `benchmark/simulator/generator.py` | ✅ | Architecture planning, debugging, long-session generators |
+| `benchmark/systems/transcript_replay.py` | ✅ | System A: last-N, rolling-summary, token-budget truncation |
+| `benchmark/core/runner.py` | ✅ | BenchmarkRunner with evaluate() and compare_architectures() |
+| `benchmark/tests/test_models.py` | ✅ | 9 tests |
+| `benchmark/tests/test_simulator.py` | ✅ | 6 tests |
+| `benchmark/tests/test_transcript_replay.py` | ✅ | 7 tests |
+| `benchmark/tests/test_runner.py` | ✅ | 6 tests |
+| `benchmark/docs/overview.md` | ✅ | Phase 1 documentation |
+
+---
+
 ## Tests
 
 | Component | Status | Notes |
@@ -112,6 +128,7 @@
 | `tests/test_real_world.py` | ✅ | 2 tests (gated by RUN_REAL_WORLD=1): embeddings, full pipeline with Qwen + Nomic |
 | `tests/run_demo.py` | ✅ | Standalone demo script: prints every pipeline step to stdout |
 | `tests/test_workflow.py` | ✅ | 6 tests: compile, end-to-end, memory storage, interrupt approve, interrupt reject, edit |
+| `benchmark/tests/*.py` | ✅ | 28 tests (Phase 1): models, simulator, transcript replay, runner |
 
 ---
 
@@ -119,6 +136,7 @@
 
 | Date | Decision |
 |------|----------|
+| 2026-06-15 | Phase 1 benchmark: models, conversation simulator, transcript replay system, runner, 28 tests |
 | 2026-06-15 | Added human-in-the-loop: interrupt/resume node between agent_step and distill with approve/reject/edit |
 | 2026-06-15 | Real-world E2E test: full pipeline verified with qwen3.5-9b + nomic-embed-text-v1.5 via LM Studio |
 | 2026-06-15 | Wired LangGraph workflow: 4-node pipeline with retrieval, agent step, distillation, and memory storage |

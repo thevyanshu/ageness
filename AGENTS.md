@@ -18,6 +18,9 @@ ruff check src\ageness            # lint
 ruff check --fix src\ageness      # auto-fix
 pytest tests\                     # all tests
 pytest tests\test_salience.py -v  # single test file
+ruff check benchmark\              # lint benchmark
+pytest benchmark\tests\ -v        # benchmark tests
+pytest tests\ benchmark\tests\    # full suite
 ```
 
 Every change follows: `ruff check → pytest → git commit`. Never skip tests. Commit after every logical change, no matter how small — a real developer commits frequently for quick rollback. Never batch unrelated changes into one commit.
