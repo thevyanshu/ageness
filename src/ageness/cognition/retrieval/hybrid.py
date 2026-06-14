@@ -5,7 +5,7 @@ from typing import Any
 
 from langgraph.store.memory import InMemoryStore
 
-from harness.memory.models import MemoryItem, RetrievalQuery
+from ageness.memory.models import MemoryItem, RetrievalQuery
 
 
 class RetrievalStrategy(str, Enum):

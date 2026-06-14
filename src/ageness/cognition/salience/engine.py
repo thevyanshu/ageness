@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langgraph.store.memory import InMemoryStore
 
-from harness.memory.models import RawMemory, SalienceScore
+from ageness.memory.models import RawMemory, SalienceScore
 
 
 class MemorySalienceEngine:

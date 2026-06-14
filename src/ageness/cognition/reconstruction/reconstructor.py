@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from harness.cognition.retrieval.hybrid import HybridRetrievalSystem
-from harness.memory.models import CognitiveState
+from ageness.cognition.retrieval.hybrid import HybridRetrievalSystem
+from ageness.memory.models import CognitiveState
 
 
 class CognitiveStateReconstruction:

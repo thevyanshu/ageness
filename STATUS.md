@@ -1,6 +1,6 @@
 # Project Status
 
-> Tracking file for the harness cognitive memory project.
+> Tracking file for the ageness cognitive memory project.
 > Update this file as components are implemented, tested, or changed.
 
 ---

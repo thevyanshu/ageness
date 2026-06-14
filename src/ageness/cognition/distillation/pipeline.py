@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from harness.cognition.salience.engine import MemorySalienceEngine
-from harness.memory.models import DistillationResult, RawMemory
+from ageness.cognition.salience.engine import MemorySalienceEngine
+from ageness.memory.models import DistillationResult, RawMemory
 
 
 class AsyncDistillationPipeline:

@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from harness.cognition.retrieval.hybrid import HybridRetrievalSystem
-from harness.memory.models import ContextWindow, MemoryItem, RetrievalQuery
+from ageness.cognition.retrieval.hybrid import HybridRetrievalSystem
+from ageness.memory.models import ContextWindow, MemoryItem, RetrievalQuery
 
 
 @dataclass
