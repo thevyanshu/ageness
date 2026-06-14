@@ -30,44 +30,34 @@ _CONTRADICTION_PAIRS = [
 ]
 
 
-def _extract_numbers(text: str) -> set[str]:
-    return set(re.findall(r"\b\d+(?:[,.]\d+)?k?\b", text.lower()))
-
-
 def _post_process_turn(
     metrics: MetricsSnapshot,
-    user_input: str,
     scenario: Scenario,
     previous_outputs: list[str],
+    recalled_fact_indices: set[int],
     turn_idx: int,
 ) -> None:
     output_lower = metrics.output.lower()
-    input_lower = user_input.lower()
 
-    facts_recalled = 0
+    new_facts = 0
+    for i, fact in enumerate(scenario.facts):
+        if i not in recalled_fact_indices and fact.content.lower() in output_lower:
+            new_facts += 1
+            recalled_fact_indices.add(i)
+    metrics.facts_recalled_this_turn = new_facts
+
     for fact in scenario.facts:
-        if fact.content.lower() in output_lower:
-            facts_recalled += 1
-    metrics.facts_recalled_this_turn = facts_recalled
-
-    input_numbers = _extract_numbers(input_lower)
-    output_numbers = _extract_numbers(output_lower)
-    fabricated_numbers = output_numbers - input_numbers
-    if fabricated_numbers:
-        metrics.hallucination_indicators.append(
-            f"turn {metrics.turn_id}: numbers not in input: {fabricated_numbers}"
-        )
-
-    definitive_patterns = [
-        r"\b(always|never|definitely|certainly|undoubtedly)\b",
-        r"\b(the only|guaranteed|100%)",
-    ]
-    for pat in definitive_patterns:
-        if re.search(pat, output_lower):
-            match_text = re.search(pat, output_lower).group()
-            metrics.hallucination_indicators.append(
-                f"turn {metrics.turn_id}: definitive claim: '{match_text}'"
-            )
+        fact_lower = fact.content.lower()
+        for prefix in ("use ", "set up", "implement", "deploy", "run"):
+            if fact_lower.startswith(prefix):
+                tool = fact_lower[len(prefix):].split()[0].rstrip(",. ")
+                if tool and len(tool) > 2:
+                    neg_pat = rf"\b(avoid|don't|not|instead of|reject)\b.*\b{re.escape(tool)}\b"
+                    if re.search(neg_pat, output_lower):
+                        metrics.hallucination_indicators.append(
+                            f"turn {metrics.turn_id}: contradicts fact '{fact.fact_id}' "
+                            f"('{tool}' should be used per scenario)"
+                        )
 
     for word_a, word_b in _CONTRADICTION_PAIRS:
         if word_a in output_lower and word_b in output_lower:
@@ -79,18 +69,12 @@ def _post_process_turn(
         for prev in previous_outputs[-5:]:
             prev_lower = prev.lower()
             for word_a, word_b in _CONTRADICTION_PAIRS:
-                if word_a in output_lower and word_b in prev_lower:
+                if (word_a in output_lower and word_b in prev_lower) or \
+                   (word_b in output_lower and word_a in prev_lower):
                     metrics.contradiction_indicators.append(
-                        f"turn {metrics.turn_id}: '{word_a}' contradicts earlier '{word_b}'"
+                        f"turn {metrics.turn_id}: '{word_a}'/'{word_b}' across turns"
                     )
                     break
-            for word_a, word_b in _CONTRADICTION_PAIRS:
-                if word_b in output_lower and word_a in prev_lower:
-                    metrics.contradiction_indicators.append(
-                        f"turn {metrics.turn_id}: '{word_b}' contradicts earlier '{word_a}'"
-                    )
-                    break
-
 
 class BenchmarkRunner:
     def __init__(self, config: BenchmarkConfig) -> None:
@@ -118,6 +102,7 @@ class BenchmarkRunner:
         system.reset()
 
         previous_outputs: list[str] = []
+        recalled_fact_indices: set[int] = set()
         turn_idx = 0
 
         for turn in scenario.turns:
@@ -136,8 +121,9 @@ class BenchmarkRunner:
             if result.metrics:
                 result.metrics.output = result.output
                 _post_process_turn(
-                    result.metrics, qa_prompt, scenario,
-                    previous_outputs, turn_idx,
+                    result.metrics, scenario,
+                    previous_outputs, recalled_fact_indices,
+                    turn_idx,
                 )
                 run.metrics.append(result.metrics)
                 m = result.metrics
