@@ -45,9 +45,9 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/ageness/cognition/active_context/builder.py` | 🔶 | Skeleton — class/interface defined, logic not implemented |
-| Token budgeting / compression | ❌ | |
-| Priority-based inclusion logic | ❌ | |
+| `src/ageness/cognition/active_context/builder.py` | ✅ | Full implementation |
+| Token budgeting / compression | ✅ | 4-char-per-token estimate, budget-aware inclusion |
+| Priority-based inclusion logic | ✅ | Goals > Decisions > Episodes > Facts, sorted by salience |
 
 ### Async Distillation Pipeline
 
@@ -104,7 +104,7 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `tests/test_active_context.py` | ❌ | Empty stub |
+| `tests/test_active_context.py` | ✅ | 10 tests: classification, priority, budget, tokens |
 | `tests/test_distillation.py` | ❌ | Empty stub |
 | `tests/test_salience.py` | ✅ | 10 tests covering scoring, decay, novelty, boosts |
 | `tests/test_retrieval.py` | ✅ | 10 tests: semantic, temporal, fusion, filtering |
