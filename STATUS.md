@@ -24,8 +24,9 @@
 | `__init__.py` files | ✅ | All packages |
 | `ARCHITECTURE.md` | ✅ | Full architecture document |
 | `STATUS.md` | ✅ | This file |
-| `.gitignore` | ❌ | |
-| Dev tooling (ruff, mypy, pytest) | ❌ | Config in pyproject.toml, not tested |
+| `.gitignore` | ✅ | |
+| Dev tooling (ruff, mypy, pytest) | ✅ | Config in pyproject.toml, verified working |
+| Package rename `harness` → `ageness` | ✅ | |
 
 ---
 
@@ -33,8 +34,8 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/memory/models.py` — memory data models | ❌ | Pydantic models for memories, context windows, etc. |
-| `src/graph/workflow.py` — base LangGraph wiring | ❌ | Main graph definition, node registration |
+| `src/ageness/memory/models.py` — data models | ✅ | MemoryItem, CognitiveState, ContextWindow, etc. |
+| `src/ageness/graph/workflow.py` — base LangGraph | 🔶 | AgentState, build/compile_workflow (no real nodes yet) |
 
 ---
 
@@ -44,7 +45,7 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/cognition/active_context/builder.py` | ❌ | Context assembly from retrieval |
+| `src/ageness/cognition/active_context/builder.py` | 🔶 | Skeleton — class/interface defined, logic not implemented |
 | Token budgeting / compression | ❌ | |
 | Priority-based inclusion logic | ❌ | |
 
@@ -52,7 +53,7 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/cognition/distillation/pipeline.py` | ❌ | Background distillation engine |
+| `src/ageness/cognition/distillation/pipeline.py` | 🔶 | Skeleton — class/interface defined |
 | Decision extractor | ❌ | |
 | Trace compression | ❌ | |
 | Unresolved goal identifier | ❌ | |
@@ -61,16 +62,16 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/cognition/salience/engine.py` | ❌ | Scoring, decay, consolidation |
-| Salience scoring function | ❌ | |
-| Decay scheduler | ❌ | |
-| Consolidation / merging logic | ❌ | |
+| `src/ageness/cognition/salience/engine.py` | ✅ | Full implementation |
+| Salience scoring function | ✅ | Type-based, freshness, metadata boosts |
+| Decay scheduler | ✅ | Exponential decay, threshold pruning |
+| Consolidation / merging logic | ✅ | Jaccard similarity merge |
 
 ### Hybrid Retrieval System
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/cognition/retrieval/hybrid.py` | ❌ | Multi-strategy retriever |
+| `src/ageness/cognition/retrieval/hybrid.py` | 🔶 | Skeleton — `retrieve()` returns empty list |
 | Semantic retrieval (embeddings) | ❌ | |
 | Temporal retrieval | ❌ | |
 | Checkpoint traversal | ❌ | |
@@ -80,7 +81,7 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/cognition/reconstruction/reconstructor.py` | ❌ | Full cognitive state rebuild |
+| `src/ageness/cognition/reconstruction/reconstructor.py` | 🔶 | Skeleton — class/interface defined |
 | Goal reconstruction | ❌ | |
 | Decision surfacing | ❌ | |
 | Dependency resolution | ❌ | |
@@ -91,10 +92,10 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| State schema definitions | ❌ | TypedDict state with reducers |
-| Graph topology (nodes / edges) | ❌ | Main execution graph |
-| Checkpointer integration | ❌ | |
-| Store integration | ❌ | |
+| State schema definitions | 🔶 | AgentState exists, will need richer state |
+| Graph topology (nodes / edges) | ❌ | Currently just START→END |
+| Checkpointer integration | 🔶 | InMemorySaver wired in compile_workflow |
+| Store integration | 🔶 | InMemoryStore wired in compile_workflow |
 | Interrupt / resume handling | ❌ | |
 
 ---
@@ -103,12 +104,12 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `tests/test_active_context.py` | ❌ | |
-| `tests/test_distillation.py` | ❌ | |
-| `tests/test_salience.py` | ❌ | |
-| `tests/test_retrieval.py` | ❌ | |
-| `tests/test_reconstruction.py` | ❌ | |
-| `tests/test_workflow.py` | ❌ | |
+| `tests/test_active_context.py` | ❌ | Empty stub |
+| `tests/test_distillation.py` | ❌ | Empty stub |
+| `tests/test_salience.py` | ✅ | 10 tests covering scoring, decay, novelty, boosts |
+| `tests/test_retrieval.py` | ❌ | Empty stub |
+| `tests/test_reconstruction.py` | ❌ | Empty stub |
+| `tests/test_workflow.py` | ❌ | Empty stub |
 
 ---
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -25,7 +25,7 @@ class RawMemory(BaseModel):
     content: str
     memory_type: MemoryType
     metadata: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source_thread_id: str | None = None
     source_checkpoint_id: str | None = None
 
@@ -35,8 +35,8 @@ class MemoryItem(BaseModel):
     namespace: tuple[str, ...]
     value: dict[str, Any]
     salience: SalienceScore | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_accessed: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_accessed: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ContextWindow(BaseModel):
