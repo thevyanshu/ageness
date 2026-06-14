@@ -10,22 +10,66 @@ from benchmark.models import (
 )
 
 
-class TranscriptReplaySystem:
+class HybridRetrievalSystemBench:
     def __init__(self, config: BenchmarkConfig) -> None:
         self.config = config
         self._history: list[dict[str, str]] = []
+        self._vector_store: list[dict] = []
         self._summary: str | None = None
 
     @property
     def name(self) -> str:
-        return "transcript_replay"
+        return "hybrid_retrieval"
 
     def reset(self) -> None:
         self._history.clear()
+        self._vector_store.clear()
         self._summary = None
 
     def _count_tokens(self, text: str) -> int:
         return max(len(text) // 4, 1)
+
+    def _get_embedding(self, text: str) -> list[float]:
+        if not self.config.lm_studio_url:
+            return []
+        import requests
+        try:
+            r = requests.post(
+                f"{self.config.lm_studio_url}/v1/embeddings",
+                json={
+                    "model": self.config.embedding_model,
+                    "input": text,
+                },
+                timeout=15,
+            )
+            r.raise_for_status()
+            return r.json()["data"][0]["embedding"]
+        except Exception:
+            return []
+
+    def _cosine_sim(self, a: list[float], b: list[float]) -> float:
+        if not a or not b:
+            return 0.0
+        import math
+        dot = sum(x * y for x, y in zip(a, b))
+        na = math.sqrt(sum(x * x for x in a))
+        nb = math.sqrt(sum(x * x for x in b))
+        if na == 0 or nb == 0:
+            return 0.0
+        return dot / (na * nb)
+
+    def _vector_retrieve(self, query: str, top_k: int = 5) -> list[str]:
+        q_emb = self._get_embedding(query)
+        if not q_emb or not self._vector_store:
+            return []
+
+        scored = []
+        for entry in self._vector_store:
+            if entry.get("embedding"):
+                sim = self._cosine_sim(q_emb, entry["embedding"])
+                scored.append((sim, entry["text"]))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [text for _, text in scored[:top_k]]
 
     def _build_context(self) -> tuple[str, int]:
         if self.config.truncation == ContextTruncation.LAST_N:
@@ -35,33 +79,28 @@ class TranscriptReplaySystem:
             )
             return context, self._count_tokens(context)
 
-        elif self.config.truncation == ContextTruncation.ROLLING_SUMMARY:
-            if not self._history:
-                return "", 0
-            recent = self._history[-self.config.last_n_messages:]
-            recent_text = "\n".join(
-                f"{m['role']}: {m['content']}" for m in recent
+        recent = self._history[-self.config.last_n_messages:]
+        recent_text = "\n".join(
+            f"{m['role']}: {m['content']}" for m in recent
+        )
+
+        retrieval_text = ""
+        if recent:
+            retrieval_text = "\n".join(
+                self._vector_retrieve(recent[-1]["content"], top_k=3)
             )
-            summary_part = ""
-            if self._summary:
-                summary_part = f"[Summary of earlier conversation]: {self._summary}\n"
-            context = summary_part + recent_text
-            return context, self._count_tokens(context)
 
-        elif self.config.truncation == ContextTruncation.TOKEN_BUDGET:
-            context_parts: list[str] = []
-            token_count = 0
-            for msg in reversed(self._history):
-                line = f"{msg['role']}: {msg['content']}"
-                tokens = self._count_tokens(line)
-                if token_count + tokens > self.config.token_limit:
-                    break
-                context_parts.insert(0, line)
-                token_count += tokens
-            context = "\n".join(context_parts)
-            return context, token_count
+        summary_part = ""
+        if self.config.truncation == ContextTruncation.ROLLING_SUMMARY \
+                and self._summary:
+            summary_part = f"[Summary of earlier conversation]: {self._summary}\n"
 
-        return "", 0
+        retrieval_part = ""
+        if retrieval_text:
+            retrieval_part = f"[Retrieved memories]:\n{retrieval_text}\n"
+
+        context = summary_part + retrieval_part + recent_text
+        return context, self._count_tokens(context)
 
     def _call_llm(self, prompt: str) -> str:
         if self.config.lm_studio_url:
@@ -88,12 +127,17 @@ class TranscriptReplaySystem:
     async def process_turn(self, user_input: str) -> SystemAResult:
         start = datetime.now(timezone.utc)
 
+        retrieval_start = datetime.now(timezone.utc)
+        retrieved_chunks = self._vector_retrieve(user_input, top_k=3)
+        retrieval_end = datetime.now(timezone.utc)
+        retrieval_ms = (retrieval_end - retrieval_start).total_seconds() * 1000
+
         self._history.append({"role": "user", "content": user_input})
 
         context, context_tokens = self._build_context()
 
         prompt = (
-            f"Conversation history:\n{context}\n\n"
+            f"Conversation history and memories:\n{context}\n\n"
             f"User: {user_input}\n"
             f"Assistant:"
         )
@@ -103,6 +147,13 @@ class TranscriptReplaySystem:
         inference_end = datetime.now(timezone.utc)
 
         self._history.append({"role": "assistant", "content": output})
+
+        emb = self._get_embedding(user_input + " " + output)
+        self._vector_store.append({
+            "text": f"user: {user_input}\nassistant: {output}",
+            "embedding": emb,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
 
         if self.config.truncation == ContextTruncation.ROLLING_SUMMARY \
                 and self._summary is None:
@@ -118,9 +169,11 @@ class TranscriptReplaySystem:
             input_tokens=self._count_tokens(user_input),
             output_tokens=self._count_tokens(output),
             context_size_tokens=context_tokens,
+            retrieval_latency_ms=retrieval_ms,
             inference_latency_ms=inference_ms,
             total_latency_ms=total_ms,
-            active_memory_count=len(self._history),
+            memories_retrieved=len(retrieved_chunks),
+            active_memory_count=len(self._history) + len(self._vector_store),
             output=output,
         )
 
@@ -133,6 +186,3 @@ class TranscriptReplaySystem:
         if len(full) > 1000:
             return full[:1000] + "..."
         return full
-
-    def get_history_length(self) -> int:
-        return len(self._history)

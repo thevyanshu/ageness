@@ -3,24 +3,34 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from benchmark.metrics.evaluator import AdvancedEvaluator
 from benchmark.models import (
     BenchmarkConfig,
     BenchmarkRun,
     EvaluationScore,
     MemoryArchitecture,
     Scenario,
+    SystemAResult,
 )
+from benchmark.systems.hybrid_retrieval import HybridRetrievalSystemBench
+from benchmark.systems.reconstructed_state import ReconstructedStateSystem
 from benchmark.systems.transcript_replay import TranscriptReplaySystem
 
 
 class BenchmarkRunner:
     def __init__(self, config: BenchmarkConfig) -> None:
         self.config = config
+        self._evaluator = AdvancedEvaluator()
 
-    def _build_system(self) -> TranscriptReplaySystem:
-        if self.config.architecture == MemoryArchitecture.TRANSCRIPT_REPLAY:
+    def _build_system(self) -> Any:
+        arch = self.config.architecture
+        if arch == MemoryArchitecture.TRANSCRIPT_REPLAY:
             return TranscriptReplaySystem(self.config)
-        raise ValueError(f"Unsupported architecture: {self.config.architecture}")
+        elif arch == MemoryArchitecture.HYBRID_RETRIEVAL:
+            return HybridRetrievalSystemBench(self.config)
+        elif arch == MemoryArchitecture.RECONSTRUCTED_STATE:
+            return ReconstructedStateSystem(self.config)
+        raise ValueError(f"Unsupported architecture: {arch}")
 
     async def run_scenario(self, scenario: Scenario) -> BenchmarkRun:
         run = BenchmarkRun(
@@ -32,24 +42,21 @@ class BenchmarkRunner:
         system = self._build_system()
         system.reset()
 
-        qa_index = 0
-        query_pairs = sorted(
-            scenario.query_pairs, key=lambda qp: qp.get("turn", 999)
-        )
-
         for turn in scenario.turns:
             if turn.role != "user":
                 continue
 
-            query_prompt = turn.content
-            if qa_index < len(query_pairs) \
-                    and query_pairs[qa_index].get("turn", 0) <= turn.turn_id:
-                query_prompt = query_pairs[qa_index]["query"]
-                qa_index += 1
+            qa_prompt = turn.content
+            for qp in scenario.query_pairs:
+                if qp.get("turn", 0) <= turn.turn_id:
+                    qa_prompt = qp["query"]
 
-            result = await system.process_turn(user_input=query_prompt)
+            result: SystemAResult = await system.process_turn(
+                user_input=qa_prompt,
+            )
 
             if result.metrics:
+                result.metrics.output = result.output
                 run.metrics.append(result.metrics)
                 m = result.metrics
                 run.total_input_tokens += m.input_tokens
@@ -62,11 +69,23 @@ class BenchmarkRunner:
 
         run.decisions_total = len(scenario.expected_decisions)
         run.facts_total = len(scenario.facts)
+
+        output_text = " ".join(
+            m.output for m in run.metrics if m.output
+        ).lower()
+        for expected in scenario.expected_decisions:
+            if expected.lower() in output_text:
+                run.decisions_matched += 1
+
         run.completed_at = datetime.now(timezone.utc)
 
         return run
 
-    def evaluate(self, run: BenchmarkRun) -> list[EvaluationScore]:
+    def evaluate(
+        self,
+        run: BenchmarkRun,
+        scenario: Scenario | None = None,
+    ) -> list[EvaluationScore]:
         scores: list[EvaluationScore] = []
 
         if run.decisions_total > 0:
@@ -95,9 +114,9 @@ class BenchmarkRunner:
             latencies = [m.total_latency_ms for m in run.metrics]
             sorted_lat = sorted(latencies)
             n = len(sorted_lat)
-            p50 = sorted_lat[max(0, int(n * 0.50) - 1)]
-            p95 = sorted_lat[max(0, int(n * 0.95) - 1)]
-            p99 = sorted_lat[max(0, int(n * 0.99) - 1)]
+            p50 = sorted_lat[max(0, int(n * 0.50) - 1)] if n > 0 else 0.0
+            p95 = sorted_lat[max(0, int(n * 0.95) - 1)] if n > 0 else 0.0
+            p99 = sorted_lat[max(0, int(n * 0.99) - 1)] if n > 0 else 0.0
         else:
             p50 = p95 = p99 = 0.0
         scores.append(EvaluationScore(
@@ -135,6 +154,11 @@ class BenchmarkRunner:
             description="Total contradictions detected",
         ))
 
+        if scenario:
+            scores.extend(
+                self._evaluator.evaluate_all(run, scenario)
+            )
+
         return scores
 
     async def compare_architectures(
@@ -146,9 +170,10 @@ class BenchmarkRunner:
         for cfg in configs:
             runner = BenchmarkRunner(cfg)
             run = await runner.run_scenario(scenario)
-            scores = runner.evaluate(run)
+            scores = runner.evaluate(run, scenario)
             results[cfg.architecture.value] = {
                 "run": run,
                 "scores": {s.name: s.value for s in scores},
+                "score_details": scores,
             }
         return results
