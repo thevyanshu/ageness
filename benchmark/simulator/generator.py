@@ -288,10 +288,13 @@ class ConversationGenerator:
                 topic[0], recall_at=[i + 10, i + 50],
             ))
 
+        expected_decisions = [f.content for f in facts]
+
         return Scenario(
             scenario_id=f"long_session_{num_turns}",
             title=f"Long-Running Session ({num_turns} turns)",
             description="Extended conversation with multiple topics",
             turns=turns,
             facts=facts,
+            expected_decisions=expected_decisions,
         )

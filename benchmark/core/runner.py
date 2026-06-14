@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -9,12 +10,86 @@ from benchmark.models import (
     BenchmarkRun,
     EvaluationScore,
     MemoryArchitecture,
+    MetricsSnapshot,
     Scenario,
     SystemAResult,
 )
 from benchmark.systems.hybrid_retrieval import HybridRetrievalSystemBench
 from benchmark.systems.reconstructed_state import ReconstructedStateSystem
 from benchmark.systems.transcript_replay import TranscriptReplaySystem
+
+_CONTRADICTION_PAIRS = [
+    ("use", "avoid"),
+    ("enable", "disable"),
+    ("should", "should not"),
+    ("increase", "decrease"),
+    ("start", "stop"),
+    ("allow", "block"),
+    ("accept", "reject"),
+    ("forward", "discard"),
+]
+
+
+def _extract_numbers(text: str) -> set[str]:
+    return set(re.findall(r"\b\d+(?:[,.]\d+)?k?\b", text.lower()))
+
+
+def _post_process_turn(
+    metrics: MetricsSnapshot,
+    user_input: str,
+    scenario: Scenario,
+    previous_outputs: list[str],
+    turn_idx: int,
+) -> None:
+    output_lower = metrics.output.lower()
+    input_lower = user_input.lower()
+
+    facts_recalled = 0
+    for fact in scenario.facts:
+        if fact.content.lower() in output_lower:
+            facts_recalled += 1
+    metrics.facts_recalled_this_turn = facts_recalled
+
+    input_numbers = _extract_numbers(input_lower)
+    output_numbers = _extract_numbers(output_lower)
+    fabricated_numbers = output_numbers - input_numbers
+    if fabricated_numbers:
+        metrics.hallucination_indicators.append(
+            f"turn {metrics.turn_id}: numbers not in input: {fabricated_numbers}"
+        )
+
+    definitive_patterns = [
+        r"\b(always|never|definitely|certainly|undoubtedly)\b",
+        r"\b(the only|guaranteed|100%)",
+    ]
+    for pat in definitive_patterns:
+        if re.search(pat, output_lower):
+            match_text = re.search(pat, output_lower).group()
+            metrics.hallucination_indicators.append(
+                f"turn {metrics.turn_id}: definitive claim: '{match_text}'"
+            )
+
+    for word_a, word_b in _CONTRADICTION_PAIRS:
+        if word_a in output_lower and word_b in output_lower:
+            metrics.contradiction_indicators.append(
+                f"turn {metrics.turn_id}: conflicting terms '{word_a}'/'{word_b}'"
+            )
+
+    if previous_outputs:
+        for prev in previous_outputs[-5:]:
+            prev_lower = prev.lower()
+            for word_a, word_b in _CONTRADICTION_PAIRS:
+                if word_a in output_lower and word_b in prev_lower:
+                    metrics.contradiction_indicators.append(
+                        f"turn {metrics.turn_id}: '{word_a}' contradicts earlier '{word_b}'"
+                    )
+                    break
+            for word_a, word_b in _CONTRADICTION_PAIRS:
+                if word_b in output_lower and word_a in prev_lower:
+                    metrics.contradiction_indicators.append(
+                        f"turn {metrics.turn_id}: '{word_b}' contradicts earlier '{word_a}'"
+                    )
+                    break
 
 
 class BenchmarkRunner:
@@ -42,6 +117,9 @@ class BenchmarkRunner:
         system = self._build_system()
         system.reset()
 
+        previous_outputs: list[str] = []
+        turn_idx = 0
+
         for turn in scenario.turns:
             if turn.role != "user":
                 continue
@@ -57,25 +135,42 @@ class BenchmarkRunner:
 
             if result.metrics:
                 result.metrics.output = result.output
+                _post_process_turn(
+                    result.metrics, qa_prompt, scenario,
+                    previous_outputs, turn_idx,
+                )
                 run.metrics.append(result.metrics)
                 m = result.metrics
                 run.total_input_tokens += m.input_tokens
                 run.total_output_tokens += m.output_tokens
                 run.total_latency_ms += m.total_latency_ms
+                run.facts_recalled += m.facts_recalled_this_turn
                 if m.hallucination_indicators:
                     run.hallucination_events += len(m.hallucination_indicators)
                 if m.contradiction_indicators:
                     run.contradictions_detected += len(m.contradiction_indicators)
+                previous_outputs.append(result.output)
+                turn_idx += 1
 
         run.decisions_total = len(scenario.expected_decisions)
         run.facts_total = len(scenario.facts)
 
-        output_text = " ".join(
-            m.output for m in run.metrics if m.output
-        ).lower()
-        for expected in scenario.expected_decisions:
-            if expected.lower() in output_text:
-                run.decisions_matched += 1
+        if run.decisions_total == 0 and run.facts_total > 0:
+            run.decisions_total = run.facts_total
+            output_text = " ".join(
+                m.output.lower() for m in run.metrics if m.output
+            )
+            for fact in scenario.facts:
+                if fact.content.lower() in output_text:
+                    run.decisions_matched += 1
+
+        else:
+            output_text = " ".join(
+                m.output for m in run.metrics if m.output
+            ).lower()
+            for expected in scenario.expected_decisions:
+                if expected.lower() in output_text:
+                    run.decisions_matched += 1
 
         run.completed_at = datetime.now(timezone.utc)
 
@@ -96,6 +191,16 @@ class BenchmarkRunner:
             name="decision_recall",
             value=round(recall, 4),
             description="Fraction of expected decisions present in output",
+        ))
+
+        if run.facts_total > 0:
+            fact_recall = run.facts_recalled / run.facts_total
+        else:
+            fact_recall = 0.0
+        scores.append(EvaluationScore(
+            name="fact_recall",
+            value=round(fact_recall, 4),
+            description="Fraction of injected facts recalled across all turns",
         ))
 
         if run.metrics:
@@ -134,7 +239,7 @@ class BenchmarkRunner:
 
         total_tokens = run.total_input_tokens + run.total_output_tokens
         if total_tokens > 0:
-            cer = run.decisions_matched / total_tokens
+            cer = (run.decisions_matched + run.facts_recalled) / total_tokens
         else:
             cer = 0.0
         scores.append(EvaluationScore(
