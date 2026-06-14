@@ -20,7 +20,7 @@ pytest tests\                     # all tests
 pytest tests\test_salience.py -v  # single test file
 ```
 
-Workflow order: `ruff check → pytest → git commit`.
+Every change follows: `ruff check → pytest → git commit`. Never skip tests. Commit after every logical change, no matter how small — a real developer commits frequently for quick rollback. Never batch unrelated changes into one commit.
 
 ## Package layout
 
@@ -34,6 +34,7 @@ src/ageness/
     ├── salience/             — Scoring, decay, consolidation (IMPLEMENTED)
     ├── retrieval/            — Multi-strategy memory retrieval
     └── reconstruction/       — Full cognitive state rebuild
+docs/                         — Module docs updated alongside implementation
 tests/                        — Mirrors src layout
 ```
 
@@ -52,6 +53,10 @@ tests/                        — Mirrors src layout
 - Use `score_sync()` on `MemorySalienceEngine` for synchronous test convenience.
 - Test files import from `ageness.*` (editable install required).
 
+## Documentation
+
+Every implemented module gets a `docs/<module>.md` file. Update docs in the same commit as the implementation — never as an afterthought.
+
 ## Commits
 
-Small, focused. Run lint + tests before every commit. Descriptive message body.
+Small, focused, one logical change per commit. Run lint + tests before every commit. Descriptive message body. Commit allows quick rollback if something breaks.
