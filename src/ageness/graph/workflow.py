@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any, Callable, Literal
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.store.memory import InMemoryStore
+from langgraph.types import Command, interrupt
 from typing_extensions import TypedDict
 
 from ageness.cognition.active_context.builder import ActiveContextBuilder
@@ -112,6 +113,39 @@ async def distill_node(
     }
 
 
+async def human_review_node(
+    state: AgentState,
+) -> Command[Literal["distill", "agent_step", "__end__"]]:
+    output = state.get("output", "")
+    if not output:
+        return Command(goto="distill")
+
+    decision = interrupt(
+        {
+            "action": "review_agent_output",
+            "output": output,
+            "input": state.get("input", ""),
+            "context": state.get("context", ""),
+        }
+    )
+
+    approved = decision.get("approved", True)
+    edited = decision.get("edited_output")
+
+    if not approved:
+        return Command(goto=END)
+
+    if edited and edited.strip():
+        new_messages: list[dict[str, Any]] = list(state.get("messages", []))
+        new_messages.append({"role": "assistant", "content": edited})
+        return Command(
+            update={"output": edited, "messages": new_messages},
+            goto="distill",
+        )
+
+    return Command(goto="distill")
+
+
 async def store_memories_node(
     state: AgentState,
     store: InMemoryStore,
@@ -175,6 +209,7 @@ def build_workflow(
     salience: MemorySalienceEngine | None = None,
     distillation: AsyncDistillationPipeline | None = None,
     predict: Callable[[str, str | None], str] | None = None,
+    enable_review: bool = False,
 ) -> StateGraph:
     retrieval = retrieval or HybridRetrievalSystem(InMemoryStore())
     salience_engine = salience or MemorySalienceEngine()
@@ -197,14 +232,23 @@ def build_workflow(
 
     builder.add_node("retrieve_context", retrieve_wrapper)
     builder.add_node("agent_step", agent_wrapper)
+
+    if enable_review:
+        builder.add_node("human_review", human_review_node)
     builder.add_node("distill", distill_wrapper)
     builder.add_node("store_memories", store_wrapper)
 
     builder.add_edge(START, "retrieve_context")
     builder.add_edge("retrieve_context", "agent_step")
-    builder.add_edge("agent_step", "distill")
-    builder.add_edge("distill", "store_memories")
-    builder.add_edge("store_memories", END)
+
+    if enable_review:
+        builder.add_edge("agent_step", "human_review")
+        builder.add_edge("distill", "store_memories")
+        builder.add_edge("store_memories", END)
+    else:
+        builder.add_edge("agent_step", "distill")
+        builder.add_edge("distill", "store_memories")
+        builder.add_edge("store_memories", END)
 
     return builder
 

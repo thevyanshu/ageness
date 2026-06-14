@@ -96,7 +96,7 @@
 | Graph topology (nodes / edges) | ✅ | retrieve_context → agent_step → distill → store_memories |
 | Checkpointer integration | ✅ | InMemorySaver default, pass-through arg in compile_workflow |
 | Store integration | ✅ | InMemoryStore default, accessible via build_workflow dependencies |
-| Interrupt / resume handling | 🔶 | Not yet wired |
+| Interrupt / resume handling | ✅ | Human review node with approve/reject/edit via interrupt/Command(resume) |
 
 ---
 
@@ -109,7 +109,9 @@
 | `tests/test_salience.py` | ✅ | 10 tests covering scoring, decay, novelty, boosts |
 | `tests/test_retrieval.py` | ✅ | 10 tests: semantic, temporal, fusion, filtering |
 | `tests/test_reconstruction.py` | ✅ | 11 tests: goals, decisions, tasks, dependencies, confidence |
-| `tests/test_workflow.py` | ✅ | 3 tests: compile, end-to-end run, memory storage |
+| `tests/test_real_world.py` | ✅ | 2 tests (gated by RUN_REAL_WORLD=1): embeddings, full pipeline with Qwen + Nomic |
+| `tests/run_demo.py` | ✅ | Standalone demo script: prints every pipeline step to stdout |
+| `tests/test_workflow.py` | ✅ | 6 tests: compile, end-to-end, memory storage, interrupt approve, interrupt reject, edit |
 
 ---
 
@@ -117,4 +119,6 @@
 
 | Date | Decision |
 |------|----------|
+| 2026-06-15 | Added human-in-the-loop: interrupt/resume node between agent_step and distill with approve/reject/edit |
+| 2026-06-15 | Real-world E2E test: full pipeline verified with qwen3.5-9b + nomic-embed-text-v1.5 via LM Studio |
 | 2026-06-15 | Wired LangGraph workflow: 4-node pipeline with retrieval, agent step, distillation, and memory storage |

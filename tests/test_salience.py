@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from ageness.cognition.salience.engine import MemorySalienceEngine
-from ageness.memory.models import MemoryItem, MemoryType, RawMemory, SalienceScore
+from ageness.memory.models import MemoryItem, MemoryType, RawMemory
 
 
 def test_score_goal_memory_high_relevance():

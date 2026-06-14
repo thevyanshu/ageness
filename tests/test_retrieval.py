@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from langgraph.store.memory import InMemoryStore
 
 from ageness.cognition.retrieval.hybrid import HybridRetrievalSystem, RetrievalStrategy
-from ageness.memory.models import MemoryItem, MemoryType, RetrievalQuery
+from ageness.memory.models import MemoryType, RetrievalQuery
 
 
 def _populate_store(store: InMemoryStore) -> None:
