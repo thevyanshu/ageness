@@ -35,7 +35,7 @@
 | Component | Status | Notes |
 |-----------|--------|-------|
 | `src/ageness/memory/models.py` — data models | ✅ | MemoryItem, CognitiveState, ContextWindow, etc. |
-| `src/ageness/graph/workflow.py` — base LangGraph | 🔶 | AgentState, build/compile_workflow (no real nodes yet) |
+| `src/ageness/graph/workflow.py` — base LangGraph | ✅ | 4-node pipeline, salience scoring, store integration |
 
 ---
 
@@ -81,10 +81,10 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/ageness/cognition/reconstruction/reconstructor.py` | 🔶 | Skeleton — class/interface defined |
-| Goal reconstruction | ❌ | |
-| Decision surfacing | ❌ | |
-| Dependency resolution | ❌ | |
+| `src/ageness/cognition/reconstruction/reconstructor.py` | ✅ | Full implementation |
+| Goal reconstruction | ✅ | Filters resolved goals, returns active only |
+| Decision surfacing | ✅ | With rationale, sorted by salience |
+| Dependency resolution | ✅ | Cross-references decision/goal key relationships |
 
 ---
 
@@ -92,11 +92,11 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| State schema definitions | 🔶 | AgentState exists, will need richer state |
-| Graph topology (nodes / edges) | ❌ | Currently just START→END |
-| Checkpointer integration | 🔶 | InMemorySaver wired in compile_workflow |
-| Store integration | 🔶 | InMemoryStore wired in compile_workflow |
-| Interrupt / resume handling | ❌ | |
+| State schema definitions | ✅ | AgentState with context, distilled, messages, decisions, goals |
+| Graph topology (nodes / edges) | ✅ | retrieve_context → agent_step → distill → store_memories |
+| Checkpointer integration | ✅ | InMemorySaver default, pass-through arg in compile_workflow |
+| Store integration | ✅ | InMemoryStore default, accessible via build_workflow dependencies |
+| Interrupt / resume handling | 🔶 | Not yet wired |
 
 ---
 
@@ -108,8 +108,8 @@
 | `tests/test_distillation.py` | ✅ | 13 tests: extraction, dedup, goals, compression, memories |
 | `tests/test_salience.py` | ✅ | 10 tests covering scoring, decay, novelty, boosts |
 | `tests/test_retrieval.py` | ✅ | 10 tests: semantic, temporal, fusion, filtering |
-| `tests/test_reconstruction.py` | ❌ | Empty stub |
-| `tests/test_workflow.py` | ❌ | Empty stub |
+| `tests/test_reconstruction.py` | ✅ | 11 tests: goals, decisions, tasks, dependencies, confidence |
+| `tests/test_workflow.py` | ✅ | 3 tests: compile, end-to-end run, memory storage |
 
 ---
 
@@ -117,4 +117,4 @@
 
 | Date | Decision |
 |------|----------|
-| | (Log architectural decisions here as they arise) |
+| 2026-06-15 | Wired LangGraph workflow: 4-node pipeline with retrieval, agent step, distillation, and memory storage |

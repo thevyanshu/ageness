@@ -52,8 +52,6 @@ class HybridRetrievalSystem:
     async def _semantic_retrieval(self, query: RetrievalQuery) -> list[MemoryItem]:
         all_items: list[MemoryItem] = []
         query_words = set(query.text.lower().split())
-        if not query_words:
-            return []
 
         namespaces_to_search = self._namespaces_for_query(query)
         for ns in namespaces_to_search:
@@ -66,7 +64,7 @@ class HybridRetrievalSystem:
                 all_items.append(parsed)
 
         if not query_words:
-            return all_items
+            return all_items[: query.max_results]
 
         scored = []
         for item in all_items:
