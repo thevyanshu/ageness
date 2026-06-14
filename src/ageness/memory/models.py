@@ -69,3 +69,4 @@ class RetrievalQuery(BaseModel):
     max_results: int = 10
     min_salience: float = 0.0
     temporal_range: tuple[datetime, datetime] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)

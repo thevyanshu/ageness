@@ -71,11 +71,11 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/ageness/cognition/retrieval/hybrid.py` | 🔶 | Skeleton — `retrieve()` returns empty list |
-| Semantic retrieval (embeddings) | ❌ | |
-| Temporal retrieval | ❌ | |
-| Checkpoint traversal | ❌ | |
-| Graph retrieval (optional) | ❌ | |
+| `src/ageness/cognition/retrieval/hybrid.py` | ✅ | Full implementation |
+| Semantic retrieval (keyword overlap) | ✅ | Token scoring with optional embedding model |
+| Temporal retrieval | ✅ | Filter by `created_at` range |
+| Checkpoint traversal | ✅ | LangGraph state history iteration |
+| Fusion / dedup / ranking | ✅ | Dedup by key, sort by salience desc |
 
 ### Cognitive State Reconstruction
 
@@ -107,7 +107,7 @@
 | `tests/test_active_context.py` | ❌ | Empty stub |
 | `tests/test_distillation.py` | ❌ | Empty stub |
 | `tests/test_salience.py` | ✅ | 10 tests covering scoring, decay, novelty, boosts |
-| `tests/test_retrieval.py` | ❌ | Empty stub |
+| `tests/test_retrieval.py` | ✅ | 10 tests: semantic, temporal, fusion, filtering |
 | `tests/test_reconstruction.py` | ❌ | Empty stub |
 | `tests/test_workflow.py` | ❌ | Empty stub |
 
