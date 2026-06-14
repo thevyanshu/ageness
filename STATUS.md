@@ -53,10 +53,10 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| `src/ageness/cognition/distillation/pipeline.py` | 🔶 | Skeleton — class/interface defined |
-| Decision extractor | ❌ | |
-| Trace compression | ❌ | |
-| Unresolved goal identifier | ❌ | |
+| `src/ageness/cognition/distillation/pipeline.py` | ✅ | Full implementation |
+| Decision extractor | ✅ | From state.decisions, metadata, assistant messages |
+| Trace compression | ✅ | Input/output summary + message role counts |
+| Unresolved goal identifier | ✅ | Filters out completed/resolved/cancelled/failed |
 
 ### Memory Salience Engine
 
@@ -105,7 +105,7 @@
 | Component | Status | Notes |
 |-----------|--------|-------|
 | `tests/test_active_context.py` | ✅ | 10 tests: classification, priority, budget, tokens |
-| `tests/test_distillation.py` | ❌ | Empty stub |
+| `tests/test_distillation.py` | ✅ | 13 tests: extraction, dedup, goals, compression, memories |
 | `tests/test_salience.py` | ✅ | 10 tests covering scoring, decay, novelty, boosts |
 | `tests/test_retrieval.py` | ✅ | 10 tests: semantic, temporal, fusion, filtering |
 | `tests/test_reconstruction.py` | ❌ | Empty stub |
