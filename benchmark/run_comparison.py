@@ -19,7 +19,7 @@ async def main() -> None:
     ts = datetime.now(timezone.utc).isoformat()
     print(f"[{ts}] Generating long session scenario (30 turns)...")
     gen = ConversationGenerator(seed=42)
-    scenario = gen.generate_long_session(num_turns=30)
+    scenario = gen.generate_long_session(num_turns=100)
 
     configs = [
         BenchmarkConfig(
@@ -49,8 +49,8 @@ async def main() -> None:
 
     runner = BenchmarkRunner(configs[0])
     ts = datetime.now(timezone.utc).isoformat()
-    print(f"[{ts}] Running 3 architectures on 30-turn session...")
-    print("  This will call the LLM ~45 times")
+    print(f"[{ts}] Running 3 architectures on 100-turn session...")
+    print("  This will call the LLM ~150 times across 3 architectures")
     bench_start = datetime.now(timezone.utc)
 
     results = await runner.compare_architectures(scenario, configs)
