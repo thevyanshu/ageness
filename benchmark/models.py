@@ -61,6 +61,7 @@ class MetricsSnapshot(BaseModel):
     retrieval_confidence: float = 0.0
     active_memory_count: int = 0
 
+    checkpoint_size_bytes: int = 0
     output: str = ""
     compression_ratio: float = 0.0
     facts_recalled_this_turn: int = 0

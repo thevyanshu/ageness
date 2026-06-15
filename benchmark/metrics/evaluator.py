@@ -144,12 +144,56 @@ class CompressionQualityEvaluator:
         ]
 
 
+class CheckpointGrowthTracker:
+    def evaluate(
+        self,
+        run: BenchmarkRun,
+        scenario: Scenario,
+    ) -> list[EvaluationScore]:
+        total_snapshots = len(run.metrics)
+        if total_snapshots < 2:
+            return [
+                EvaluationScore(
+                    name="checkpoint_growth_rate",
+                    value=0.0,
+                    description="Average bytes added per turn (checkpoint growth)",
+                ),
+                EvaluationScore(
+                    name="final_checkpoint_size_bytes",
+                    value=0.0,
+                    description="Total checkpoint size at end of session",
+                ),
+            ]
+
+        sizes = [m.checkpoint_size_bytes for m in run.metrics]
+        final_size = float(sizes[-1])
+        growth_rates = [
+            sizes[i] - sizes[i - 1]
+            for i in range(1, len(sizes))
+        ]
+        avg_growth = sum(growth_rates) / len(growth_rates)
+
+        return [
+            EvaluationScore(
+                name="checkpoint_growth_rate",
+                value=round(avg_growth, 2),
+                description="Average bytes added per turn (checkpoint growth)",
+            ),
+            EvaluationScore(
+                name="final_checkpoint_size_bytes",
+                value=round(final_size, 2),
+                description="Total checkpoint size at end of session",
+            ),
+        ]
+
+
 class AdvancedEvaluator:
     def __init__(self) -> None:
         self.hallucination = HallucinationDetector()
         self.contradiction = ContradictionDetector()
         self.temporal = TemporalReasoningScorer()
         self.compression = CompressionQualityEvaluator()
+        self.checkpoint = CheckpointGrowthTracker()
 
     def evaluate_all(
         self,
@@ -162,5 +206,6 @@ class AdvancedEvaluator:
         scores.extend(self.contradiction.detect(run, scenario))
         scores.extend(self.temporal.score(run, scenario))
         scores.extend(self.compression.evaluate(run, scenario))
+        scores.extend(self.checkpoint.evaluate(run, scenario))
 
         return scores

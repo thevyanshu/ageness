@@ -10,5 +10,7 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+AGENTS.md
 benchmark_report/
+benchmark_report_long_session_*/
 .test_report_*/

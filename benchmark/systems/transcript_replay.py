@@ -113,6 +113,9 @@ class TranscriptReplaySystem:
         total_ms = (total_end - start).total_seconds() * 1000
         inference_ms = (inference_end - inference_start).total_seconds() * 1000
 
+        import json
+        checkpoint_bytes = len(json.dumps(self._history))
+
         metrics = MetricsSnapshot(
             turn_id=len(self._history) // 2,
             input_tokens=self._count_tokens(user_input),
@@ -121,6 +124,7 @@ class TranscriptReplaySystem:
             inference_latency_ms=inference_ms,
             total_latency_ms=total_ms,
             active_memory_count=len(self._history),
+            checkpoint_size_bytes=checkpoint_bytes,
             output=output,
         )
 

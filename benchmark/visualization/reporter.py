@@ -194,6 +194,28 @@ def plot_memory_growth(results: dict) -> go.Figure | None:
     return fig
 
 
+def plot_checkpoint_size(results: dict) -> go.Figure | None:
+    if not PLOTLY_AVAILABLE:
+        return None
+    fig = go.Figure()
+    for key in _arch_key(results):
+        ms = _metrics(key, results)
+        turns = [m.turn_id for m in ms]
+        sizes = [m.checkpoint_size_bytes for m in ms]
+        fig.add_trace(go.Scatter(
+            x=turns, y=sizes, mode="lines+markers",
+            name=_label(key), line=dict(color=_color(key)),
+        ))
+    fig.update_layout(
+        title="Checkpoint Size Growth Over Session",
+        xaxis_title="Turn",
+        yaxis_title="Checkpoint Size (bytes)",
+        legend=dict(x=0, y=1),
+        template="plotly_white",
+    )
+    return fig
+
+
 def generate_report(
     results: dict[str, dict[str, Any]],
     output_dir: str = "benchmark_report",
@@ -211,6 +233,7 @@ def generate_report(
         "recall_accuracy": (plot_recall_accuracy, "Facts Recalled"),
         "hallucination_rate": (plot_hallucination_rate, "Hallucination Events"),
         "memory_growth": (plot_memory_growth, "Memory Growth"),
+        "checkpoint_size": (plot_checkpoint_size, "Checkpoint Size"),
     }
 
     hmtl_parts = [f"<h1>Benchmark Report — {scenario_name}</h1>"]

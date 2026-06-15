@@ -205,6 +205,15 @@ class ReconstructedStateSystem:
             1 for _ in self.store.search(("*", "episodic"))
         )
 
+        import json
+        checkpoint_bytes = 0
+        for ns in [("*", "decision"), ("*", "goal"), ("*", "episodic")]:
+            for item in self.store.search(ns):
+                try:
+                    checkpoint_bytes += len(json.dumps(dict(item)))
+                except Exception:
+                    checkpoint_bytes += 512
+
         total_end = datetime.now(timezone.utc)
         total_ms = (total_end - start).total_seconds() * 1000
 
@@ -221,6 +230,7 @@ class ReconstructedStateSystem:
                 + len(context_window.episodes)
                 + len(context_window.facts),
             active_memory_count=stored_memories,
+            checkpoint_size_bytes=checkpoint_bytes,
             output=output,
         )
 

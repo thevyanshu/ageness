@@ -11,7 +11,7 @@ from ageness.cognition.distillation.pipeline import AsyncDistillationPipeline
 from ageness.cognition.reconstruction.reconstructor import CognitiveStateReconstruction
 from ageness.cognition.retrieval.hybrid import HybridRetrievalSystem, RetrievalQuery
 from ageness.cognition.salience.engine import MemorySalienceEngine
-from ageness.memory.models import MemoryType, RawMemory
+from ageness.memory.models import MemoryType
 
 LM_STUDIO_URL = os.environ.get("LM_STUDIO_URL", "http://localhost:1234")
 
